@@ -110,7 +110,8 @@ def create_app(test_config=None):
     def delete_question(question_id):
         _error_code = None
         try:
-            question = Question.query.filter(Question.id == question_id).one_or_none()
+            question = Question.query.filter(
+                Question.id == question_id).one_or_none()
             if question is None:
                 _error_code = 404
                 abort(404)
@@ -139,6 +140,24 @@ def create_app(test_config=None):
   the form will clear and the question will appear at the end of the last page
   of the questions list in the "List" tab.  
   '''
+    @app.route('/questions', methods=['POST'])
+    def add_question():
+        _error_code = None
+        try:
+            data = request.get_json()
+            question = Question(question=data['question'], answer=data['answer'],
+                                category=data['category'], difficulty=data['difficulty'])
+            question.insert()
+            return jsonify({
+                'success': True,
+            })
+        except:
+            db.session.rollback()
+            print(sys.exc_info())
+            _error_code = 422 if _error_code is None else _error_code
+            abort(_error_code)
+        finally:
+            db.session.close()
 
     '''
   @TODO: 
