@@ -50,17 +50,21 @@ def create_app(test_config=None):
   '''
     @app.route('/categories')
     def get_categories():
+        _error_code = None
         try:
             categories = Category.query.order_by(Category.id).all()
 
             if len(categories) == 0:
+                _error_code = 404
                 abort(404)
 
             return jsonify({
                 'categories': {category.id: category.type for category in categories}
             })
         except:
-            abort(422)
+            print(sys.exc_info())
+            _error_code = 422 if _error_code is None else _error_code
+            abort(_error_code)
 
     '''
   @TODO:
@@ -85,7 +89,7 @@ def create_app(test_config=None):
 
             if len(current_questions) == 0 or len(categories) == 0:
                 _error_code = 404
-                abort(_error_code)
+                abort(404)
 
             return jsonify({
                 'questions': current_questions,
@@ -94,6 +98,7 @@ def create_app(test_config=None):
                 'current_category': None
             })
         except:
+            print(sys.exc_info())
             _error_code = 422 if _error_code is None else _error_code
             abort(_error_code)
 
@@ -206,6 +211,8 @@ def create_app(test_config=None):
                 Question.category == category_id).order_by(Question.id).all()
             if len(questions) == 0:
                 _error_code = 404
+                abort(404)
+
             return jsonify({
                 'questions': [question.format() for question in questions],
                 'total_questions': len(Question.query.filter(Question.category == category_id).all()),
@@ -229,22 +236,33 @@ def create_app(test_config=None):
   '''
     @app.route('/quizzes', methods=['POST'])
     def play_trivia():
+        _error_code = None
         try:
             body = request.get_json()
             if int(body['quiz_category']['id']) != 0:
-                questions = Question.query.filter(Question.id == int(body['quiz_category']['id'])).order_by(Question.id).all()
+                questions = Question.query.filter(Question.category == int(
+                    body['quiz_category']['id'])).order_by(Question.id).all()
             else:
                 questions = Question.query.order_by(Question.id).all()
-            for question in questions:
-                if question.id in body['previous_questions']:
-                    questions.remove(question)
-                else:
-                    print(question.format())
+
+            if len(questions) == 0:
+                _error_code = 404
+                abort(404)
+
+            formatted_questions = [question.format() for question in questions]
+            while len(formatted_questions) != len(body['previous_questions']):
+                question = random.choice(formatted_questions)
+                if question['id'] not in body['previous_questions']:
+                    break
+            else:
+                question = None
             return jsonify({
-                'question': questions[0] if len(questions) else None
+                'question': question
             })
         except:
-            abort(422)
+            print(sys.exc_info())
+            _error_code = 422 if _error_code is None else _error_code
+            abort(_error_code)
 
     '''
   @TODO: 

@@ -1,3 +1,4 @@
+from crypt import methods
 import os
 import unittest
 import json
@@ -89,7 +90,7 @@ class TriviaTestCase(unittest.TestCase):
     
 
     def test_add_questions(self):
-        res = self.client().post('questions', json=self.new_question)
+        res = self.client().post('/questions', json=self.new_question)
         data = json.loads(res.data)
 
         self.assertEqual(res.status_code, 200)
@@ -100,7 +101,7 @@ class TriviaTestCase(unittest.TestCase):
 
 
     def test_405_if_question_add_not_allowed(self):
-        res = self.client().post('questions/10', json=self.new_question)
+        res = self.client().post('/questions/10', json=self.new_question)
         data = json.loads(res.data)
 
         self.assertEqual(res.status_code, 405)
@@ -110,7 +111,7 @@ class TriviaTestCase(unittest.TestCase):
 
     
     def test_search_question(self):
-        res = self.client().post('questions', json={'searchTerm': 'title'})
+        res = self.client().post('/questions', json={'searchTerm': 'title'})
         data = json.loads(res.data)
 
         self.assertEqual(res.status_code, 200)
@@ -120,7 +121,7 @@ class TriviaTestCase(unittest.TestCase):
 
     
     def test_422_if_question_search_unprocessable(self):
-        res = self.client().post('questions', json={'searchTermXXX': 'title'})
+        res = self.client().post('/questions', json={'searchTermXXX': 'title'})
         data = json.loads(res.data)
 
         self.assertEqual(res.status_code, 422)
@@ -147,6 +148,30 @@ class TriviaTestCase(unittest.TestCase):
         self.assertEqual(data['success'], False)
         self.assertEqual(data['message'], 'resource not found')
         self.assertEqual(data['error'], 404)
+
+
+    def test_post_quiz_question(self):
+        res = self.client().post('/quizzes', json={"previous_questions": [], "quiz_category": {"type": "History", "id": "4"}})
+        data = json.loads(res.data)
+
+        self.assertEqual(res.status_code, 200)
+        self.assertIsInstance(data['question'], dict)
+        self.assertTrue(data['question']['answer'])
+        self.assertTrue(data['question']['category'])
+        self.assertTrue(data['question']['difficulty'])
+        self.assertTrue(data['question']['id'])
+        self.assertTrue(data['question']['question'])
+
+
+    def test_404_if_quiz_question_category_does_not_exist(self):
+        res = self.client().post('/quizzes', json={"previous_questions": [], "quiz_category": {"type": "History", "id": "10"}})
+        data = json.loads(res.data)
+
+        self.assertEqual(res.status_code, 404)
+        self.assertEqual(data['success'], False)
+        self.assertEqual(data['message'], 'resource not found')
+        self.assertEqual(data['error'], 404)
+
 
 
 
