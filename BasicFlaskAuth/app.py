@@ -1,3 +1,4 @@
+from signal import raise_signal
 from flask import Flask, request, abort
 import json
 from functools import wraps
@@ -7,9 +8,9 @@ from urllib.request import urlopen
 
 app = Flask(__name__)
 
-AUTH0_DOMAIN = @TODO_REPLACE_WITH_YOUR_DOMAIN
+AUTH0_DOMAIN = 'devnet.eu.auth0.com'
 ALGORITHMS = ['RS256']
-API_AUDIENCE = @TODO_REPLACE_WITH_YOUR_API_AUDIENCE
+API_AUDIENCE = 'image'
 
 
 class AuthError(Exception):
@@ -105,20 +106,38 @@ def verify_decode_jwt(token):
             }, 400)
 
 
-def requires_auth(f):
-    @wraps(f)
-    def wrapper(*args, **kwargs):
-        token = get_token_auth_header()
-        try:
-            payload = verify_decode_jwt(token)
-        except:
-            abort(401)
-        return f(payload, *args, **kwargs)
+def check_permissions(permission, payload):
+    if 'permissions' not in payload:
+        raise AuthError({
+            'code': 'invalid claims',
+            'description': 'Permissions not included in JWT'
+        }, 400)
 
-    return wrapper
+    if permission not in payload['permissions']:
+        raise AuthError({
+            'code': 'unauthorized',
+            'description': 'Permission not found',
+        }, 403)
+    
+    return True
 
-@app.route('/headers')
-@requires_auth
-def headers(payload):
+def requires_auth(permissions=''):
+    def requires_auth_decor(f):
+        @wraps(f)
+        def wrapper(*args, **kwargs):
+            try:
+                token = get_token_auth_header()
+                payload = verify_decode_jwt(token)
+                print(payload)
+            except:
+                abort(401)
+            return f(payload, *args, **kwargs)
+        return wrapper
+    return requires_auth_decor
+
+
+@app.route('/images')
+@requires_auth('get:images')
+def images(payload):
     print(payload)
     return 'Access Granted'
